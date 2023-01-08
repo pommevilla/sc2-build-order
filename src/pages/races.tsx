@@ -15,7 +15,7 @@ export const RaceCard = ({
 }) => {
   const buttonStyle = isOpponent
     ? `bg-red-700 hover:bg-red-800`
-    : ` bg-blue-700 hover:bg-blue-800`;
+    : `bg-blue-700 hover:bg-blue-800`;
 
   return (
     <div className="max-w-sm rounded-lg border border-gray-200 bg-white shadow-md dark:border-gray-700 dark:bg-gray-800">
@@ -26,7 +26,7 @@ export const RaceCard = ({
         <Link
           href={href}
           className={
-            `inline-flex items-center rounded-lg px-3 py-2 text-center text-sm font-medium text-white focus:outline-none focus:ring-4 focus:ring-blue-300` +
+            `inline-flex items-center rounded-lg px-3 py-2 text-center text-sm font-medium text-white focus:outline-none focus:ring-4 focus:ring-blue-300 ` +
             buttonStyle
           }
         >

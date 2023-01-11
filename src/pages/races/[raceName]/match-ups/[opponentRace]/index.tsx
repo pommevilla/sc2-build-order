@@ -1,10 +1,33 @@
 import { BuildOrder } from "@prisma/client";
 import { type NextPage } from "next";
+import build from "next/dist/build";
 import Head from "next/head";
+import Link from "next/link";
 import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
+import { Badge, Variant } from "../../../../../components/Badge";
 import { trpc } from "../../../../../utils/trpc";
 
+export const macroBuildType = "macro";
+export const timingBuildType = "timing attack";
+export const allInBuildType = "all in";
+export const cheeseBuildType = "cheese";
+export const buildTypes = [
+  macroBuildType,
+  timingBuildType,
+  allInBuildType,
+  cheeseBuildType,
+];
+
 function BuildCard({ build }: { build: BuildOrder }) {
+  const badgeVariant: Variant =
+    {
+      [cheeseBuildType]: Variant.Warning,
+      [macroBuildType]: Variant.Success,
+      [timingBuildType]: Variant.Primary,
+      [allInBuildType]: Variant.Danger,
+    }[build.style] ?? Variant.Primary;
+
   return (
     <div className="max-w-sm rounded-lg border border-gray-200 bg-white p-6 shadow-md dark:border-gray-700 dark:bg-gray-800">
       <a href="#">
@@ -17,16 +40,14 @@ function BuildCard({ build }: { build: BuildOrder }) {
       </p>
       <p className="mb-3 flex gap-4 font-normal text-gray-700 dark:text-gray-400">
         <b>Style: </b>
-        <span className="mr-2 rounded bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900 dark:text-red-300">
-          {build.style}
-        </span>
+        <Badge text={build.style} variant={badgeVariant} />
       </p>
       <p className="mb-3 flex gap-4 font-normal text-gray-700 dark:text-gray-400">
         Created by: {build.author}
       </p>
 
-      <a
-        href="#"
+      <Link
+        href={`/builds/${build.id}`}
         className="inline-flex items-center rounded-lg bg-blue-700 px-3 py-2 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
       >
         View Build
@@ -43,22 +64,40 @@ function BuildCard({ build }: { build: BuildOrder }) {
             clipRule="evenodd"
           ></path>
         </svg>
-      </a>
+      </Link>
     </div>
   );
 }
 
-const FindBuilds: NextPage = () => {
-  const { opponentRace, raceName } = useRouter().query as {
+const FindBuildsPage: NextPage = () => {
+  const [selectedBuildType, setSelectedBuildType] = useState(buildTypes[0]);
+  const router = useRouter();
+
+  const { opponentRace = "", raceName = "" } = useRouter().query as {
     opponentRace: string;
     raceName: string;
   };
 
-  const builds = trpc.builds.getBuildsByMatchUp.useQuery({
-    matchUp: `${raceName.toLowerCase().charAt(0)}v${opponentRace
-      .toLowerCase()
-      .charAt(0)}`,
-  });
+  const builds = trpc.builds.getBuildsByMatchUp.useQuery(
+    {
+      matchUp: `${raceName.toLowerCase().charAt(0)}v${opponentRace
+        .toLowerCase()
+        .charAt(0)}`,
+    },
+    {
+      enabled: false,
+    }
+  );
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    builds.refetch();
+  }, [router.isReady, builds]);
+
+  const filteredBuilds = (builds.data ?? []).filter(
+    (build) => build.style === selectedBuildType
+  );
+
   return (
     <>
       <Head>
@@ -67,13 +106,46 @@ const FindBuilds: NextPage = () => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main className="flex min-h-screen flex-col items-center justify-center gap-8 px-4 text-black dark:bg-gray-800 dark:text-white">
-        <h1>
+      <main className="container m-auto flex flex-col gap-12 pt-12">
+        <h1 className="text-4xl text-white">
           {raceName} vs {opponentRace}
         </h1>
 
+        <fieldset>
+          <label className="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
+            Build type
+          </label>
+
+          <ul className="w-full items-center rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:flex">
+            {buildTypes.map((buildType) => (
+              <li
+                key={buildType}
+                className="w-full border-b border-gray-200 dark:border-gray-600 sm:border-b-0 sm:border-r"
+              >
+                <div className="flex items-center pl-3">
+                  <input
+                    id={`build-radio-${buildType}`}
+                    type="radio"
+                    value={buildType}
+                    name="list-radio"
+                    checked={buildType === selectedBuildType}
+                    className="h-4 w-4 border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600 dark:ring-offset-gray-700 dark:focus:ring-blue-600 dark:focus:ring-offset-gray-700"
+                    onChange={(e) => setSelectedBuildType(e.target.value)}
+                  />
+                  <label
+                    htmlFor={`build-radio-${buildType}`}
+                    className="ml-2 w-full py-3 text-sm font-medium text-gray-900 dark:text-gray-300"
+                  >
+                    {buildType}
+                  </label>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </fieldset>
+
         <section className="grid grid-cols-3 gap-4">
-          {builds.data?.map((build) => (
+          {filteredBuilds.map((build) => (
             <BuildCard key={build.id} build={build} />
           ))}
         </section>
@@ -82,4 +154,4 @@ const FindBuilds: NextPage = () => {
   );
 };
 
-export default FindBuilds;
+export default FindBuildsPage;

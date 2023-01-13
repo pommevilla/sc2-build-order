@@ -4,8 +4,12 @@ import build from "next/dist/build";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { setUncaughtExceptionCaptureCallback } from "process";
+import { ChangeEvent, useEffect, useState } from "react";
 import { Badge, Variant } from "../../../../../components/Badge";
+import { Form } from "../../../../../components/Form";
+import { Input } from "../../../../../components/Input";
+import { Label } from "../../../../../components/Label";
 import { trpc } from "../../../../../utils/trpc";
 
 export const macroBuildType = "macro";
@@ -72,6 +76,7 @@ function BuildCard({ build }: { build: BuildOrder }) {
 const FindBuildsPage: NextPage = () => {
   const [selectedBuildType, setSelectedBuildType] = useState(buildTypes[0]);
   const router = useRouter();
+  const [search, setSearch] = useState("");
 
   const { opponentRace = "", raceName = "" } = useRouter().query as {
     opponentRace: string;
@@ -94,9 +99,19 @@ const FindBuildsPage: NextPage = () => {
     builds.refetch();
   }, [router.isReady, builds]);
 
-  const filteredBuilds = (builds.data ?? []).filter(
-    (build) => build.style === selectedBuildType
-  );
+  const lowercaseSearch = search.toLocaleLowerCase();
+
+  const filteredBuilds = (builds.data ?? [])
+    .filter((build) => build.style === selectedBuildType)
+    .filter((build) =>
+      search !== ""
+        ? ["author", "title", "description"].some((key) =>
+            ((build as Record<string, string>)[key] ?? "")
+              .toLowerCase()
+              .includes(lowercaseSearch)
+          )
+        : true
+    );
 
   return (
     <>
@@ -106,48 +121,66 @@ const FindBuildsPage: NextPage = () => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main className="container m-auto flex flex-col gap-12 pt-12">
+      <main className="container m-auto flex flex-col gap-8 pt-12">
         <h1 className="text-4xl text-white">
           {raceName} vs {opponentRace}
         </h1>
 
-        <fieldset>
-          <label className="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
-            Build type
-          </label>
+        <Form className="w-1/3">
+          <fieldset>
+            <Label htmlFor="search">
+              Filter (by name, author, or description)
+            </Label>
 
-          <ul className="w-full items-center rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:flex">
-            {buildTypes.map((buildType) => (
-              <li
-                key={buildType}
-                className="w-full border-b border-gray-200 dark:border-gray-600 sm:border-b-0 sm:border-r"
-              >
-                <div className="flex items-center pl-3">
-                  <input
-                    id={`build-radio-${buildType}`}
-                    type="radio"
-                    value={buildType}
-                    name="list-radio"
-                    checked={buildType === selectedBuildType}
-                    className="h-4 w-4 border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600 dark:ring-offset-gray-700 dark:focus:ring-blue-600 dark:focus:ring-offset-gray-700"
-                    onChange={(e) => setSelectedBuildType(e.target.value)}
-                  />
-                  <label
-                    htmlFor={`build-radio-${buildType}`}
-                    className="ml-2 w-full py-3 text-sm font-medium text-gray-900 dark:text-gray-300"
-                  >
-                    {buildType}
-                  </label>
-                </div>
-              </li>
+            <Input
+              id="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </fieldset>
+
+          <fieldset>
+            <label className="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
+              Build type
+            </label>
+
+            <ul className="w-full items-center rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:flex">
+              {buildTypes.map((buildType) => (
+                <li
+                  key={buildType}
+                  className="w-full border-b border-gray-200 dark:border-gray-600 sm:border-b-0 sm:border-r"
+                >
+                  <div className="flex items-center pl-3">
+                    <input
+                      id={`build-radio-${buildType}`}
+                      type="radio"
+                      value={buildType}
+                      name="list-radio"
+                      checked={buildType === selectedBuildType}
+                      className="h-4 w-4 border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600 dark:ring-offset-gray-700 dark:focus:ring-blue-600 dark:focus:ring-offset-gray-700"
+                      onChange={(e) => setSelectedBuildType(e.target.value)}
+                    />
+                    <label
+                      htmlFor={`build-radio-${buildType}`}
+                      className="ml-2 w-full py-3 text-sm font-medium text-gray-900 dark:text-gray-300"
+                    >
+                      {buildType}
+                    </label>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </fieldset>
+        </Form>
+
+        <section className="flex flex-col gap-4">
+          <h2 className="text-2xl text-white">Matching Builds:</h2>
+
+          <section className="grid grid-cols-3 gap-4">
+            {filteredBuilds.map((build) => (
+              <BuildCard key={build.id} build={build} />
             ))}
-          </ul>
-        </fieldset>
-
-        <section className="grid grid-cols-3 gap-4">
-          {filteredBuilds.map((build) => (
-            <BuildCard key={build.id} build={build} />
-          ))}
+          </section>
         </section>
       </main>
     </>
